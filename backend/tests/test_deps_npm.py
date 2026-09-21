@@ -89,7 +89,7 @@ lodash@^4.17.15:
 def test_yarn_lock_v1():
     res = npm.parse_yarn_lock(YARN, "yarn.lock")
     assert {(p.name, p.version) for p in res.packages} == {("@babel/core", "7.20.5"), ("lodash", "4.17.15")}
-    assert by_name(res, "lodash")[0].line == 8
+    assert by_name(res, "lodash")[0].line == 9
 
 
 def test_yarn_berry_is_reported_unsupported():
