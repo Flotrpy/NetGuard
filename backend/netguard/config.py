@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     # Upload / scan resource limits
     max_upload_mb: int = 50
     max_extracted_mb: int = 500
+    max_image_mb: int = 1024  # container image tarballs (docker save)
     max_archive_files: int = 20000
     max_file_scan_kb: int = 1024  # files larger than this are skipped by content scanners
     scan_timeout_seconds: int = 600

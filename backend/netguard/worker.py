@@ -20,6 +20,17 @@ log = get_logger("worker")
 Handler = Callable[[Job], None]
 
 
+def _cleanup_image(scan_id: str) -> None:
+    """Uploaded image tarballs are large and only needed while the scan runs."""
+    from netguard.models import Scan
+
+    with get_session_factory()() as db:
+        scan = db.get(Scan, scan_id)
+        rel = (scan.config or {}).get("image_path") if scan else None
+    if rel:
+        (get_settings().uploads_dir / rel).unlink(missing_ok=True)
+
+
 def _handle_scan(job: Job) -> None:
     from netguard.services import integrations
 
@@ -27,7 +38,10 @@ def _handle_scan(job: Job) -> None:
     if not integrations.prepare_scan(scan_id):  # provider scan whose code could not be fetched
         integrations.report_scan(scan_id)
         return
-    execute_scan(scan_id)
+    try:
+        execute_scan(scan_id)
+    finally:
+        _cleanup_image(scan_id)
     integrations.report_scan(scan_id)
     # Verification scans carry a finding/patch; turn the rescan result into a verdict.
     from netguard.services.patches import evaluate_verification

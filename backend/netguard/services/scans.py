@@ -135,6 +135,7 @@ def _fingerprint_salt(settings: Settings) -> str:
 def _runtime(settings: Settings) -> dict[str, Any]:
     return {
         "fingerprint_salt": _fingerprint_salt(settings),
+        "uploads_dir": str(settings.uploads_dir),
         "osv_api_url": settings.osv_api_url,
         "osv_offline": settings.osv_offline,
         "osv_timeout": settings.osv_timeout_seconds,
@@ -185,6 +186,16 @@ def _run_scanner(
         )
     except SandboxCancelled as exc:
         raise ScanCancelled() from exc
+
+
+def _resolve_scope(scan: Scan, result: ScanResult, only: Any):
+    """Which existing findings a complete scan may auto-resolve."""
+    if scan.kind == "container":  # an image scan only speaks for that image
+        image = result.metadata.get("image")
+        return lambda f: (f.extra or {}).get("image") == image
+    if only:
+        return lambda f, o=set(only): f.file_path in o
+    return None
 
 
 def execute_scan(scan_id: str) -> None:
@@ -238,7 +249,7 @@ def execute_scan(scan_id: str) -> None:
                         raws=result.findings,
                         repository_id=scan.repository_id,
                         complete=result.complete,
-                        resolve_scope=(lambda f, o=set(only): f.file_path in o) if only else None,
+                        resolve_scope=_resolve_scope(scan, result, only),
                     )
                 db.commit()
             outcomes[name] = {

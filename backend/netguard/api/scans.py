@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -178,3 +178,47 @@ def list_scans(
         .limit(limit)
     ).all()
     return [ScanOut.model_validate(s) for s in scans]
+
+
+@router.post("/api/projects/{project_id}/container-scans", response_model=ScanOut, status_code=202)
+async def start_container_scan(
+    project_id: str,
+    request: Request,
+    image_name: str = Form("", max_length=200),
+    file: UploadFile = File(...),
+    principal: Principal = Depends(get_principal),
+    db: Session = Depends(get_db),
+) -> ScanOut:
+    """Scan a container image uploaded as `docker save` output (nothing is executed)."""
+    from netguard.config import get_settings
+    from netguard.db import new_id
+
+    project = get_project_or_404(db, principal, project_id, ProjectRole.EDITOR)
+    settings = get_settings()
+    images = settings.uploads_dir / "images"
+    images.mkdir(parents=True, exist_ok=True)
+    rel = f"images/{new_id()}.tar"  # server-chosen name, never the client's filename
+    dest, size, limit = settings.uploads_dir / rel, 0, settings.max_image_mb * 1024 * 1024
+    try:
+        with open(dest, "wb") as out:
+            while chunk := await file.read(1024 * 1024):
+                size += len(chunk)
+                if size > limit:
+                    raise HTTPException(status_code=413,
+                                        detail=f"Image exceeds {settings.max_image_mb} MB")
+                out.write(chunk)
+        scan = create_scan(
+            db, project=project, scanners=["docker"], kind="container",
+            config={"image_path": rel, "image_name": image_name.strip()},
+            user_id=principal.user.id, trigger="ci" if principal.api_token else "manual",
+            ref=image_name.strip()[:200],
+        )
+    except (ScanRequestError, HTTPException) as exc:
+        dest.unlink(missing_ok=True)
+        if isinstance(exc, HTTPException):
+            raise
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    audit(db, "scan.start", request=request, user_id=principal.user.id, target_type="scan",
+          target_id=scan.id, details={"kind": "container", "bytes": size})
+    db.commit()
+    return ScanOut.model_validate(scan)
