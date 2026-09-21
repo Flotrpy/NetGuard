@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     max_file_scan_kb: int = 1024  # files larger than this are skipped by content scanners
     scan_timeout_seconds: int = 600
     scan_memory_mb: int = 1024
+    scan_isolation: str = "process"  # process (sandboxed child) | inline (tests/debugging)
+    embedded_worker: bool | None = None  # None => enabled in development, off otherwise
+    worker_poll_seconds: float = 1.0
 
     # Rate limiting (per client, per minute)
     rate_limit_per_minute: int = 300
@@ -58,6 +61,16 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.env == "production"
+
+    @property
+    def run_embedded_worker(self) -> bool:
+        if self.embedded_worker is not None:
+            return self.embedded_worker
+        return self.env == "development"
+
+    @property
+    def cache_dir(self) -> Path:
+        return self.data_dir / "cache"
 
     @property
     def snapshots_dir(self) -> Path:

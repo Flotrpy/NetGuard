@@ -88,6 +88,9 @@ class ScanContext:
     is_cancelled: Callable[[], bool] = lambda: False  # noqa: E731
     # Optional: restrict to these relative paths (incremental scanning of changed files).
     only_paths: set[str] | None = None
+    # Non-secret runtime settings passed explicitly (sandboxed scanners cannot read app
+    # settings): OSV endpoint/cache, network target policy, ...
+    runtime: dict[str, Any] = field(default_factory=dict)
 
     def check_cancelled(self) -> None:
         if self.is_cancelled():
