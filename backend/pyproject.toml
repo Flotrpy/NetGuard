@@ -50,4 +50,4 @@ ignore = ["B008"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["E501"]
-"netguard/scanners/**/rules_*.py" = ["E501"]
+"netguard/scanners/**/*rules*.py" = ["E501"]
