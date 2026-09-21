@@ -20,7 +20,7 @@ from netguard.scanners.base import ScanCancelled, ScanContext, ScanResult
 from netguard.scanners.registry import get_scanner
 from netguard.scanners.runner import run_scanner_task
 from netguard.services import jobs
-from netguard.services.findings import ingest_findings
+from netguard.services.findings import IngestStats, ingest_findings
 from netguard.services.risk import severity_counts
 from netguard.services.snapshots import snapshot_root
 
@@ -59,7 +59,8 @@ def create_scan(
         if name not in seen:
             seen.append(name)
     if kind == "code":
-        if repository is None or snapshot is None:
+        deferred = bool((config or {}).get("fetch"))  # code is downloaded by the worker
+        if repository is None or (snapshot is None and not deferred):
             raise ScanRequestError("A code scan needs a repository with an uploaded snapshot")
         for name in seen:
             if "source" not in get_scanner(name).supported_inputs:
@@ -217,19 +218,28 @@ def execute_scan(scan_id: str) -> None:
             with factory() as db:
                 scan = db.get(Scan, scan_id)
                 result = _run_scanner(settings, name, root, scan, progress)
+            items: list[dict[str, Any]] | None = None
             with factory() as db:
                 scan = db.get(Scan, scan_id)
                 only = scan.config.get("only_paths")
-                stats = ingest_findings(
-                    db,
-                    project_id=scan.project_id,
-                    scan=scan,
-                    scanner=name,
-                    raws=result.findings,
-                    repository_id=scan.repository_id,
-                    complete=result.complete,
-                    resolve_scope=(lambda f, o=set(only): f.file_path in o) if only else None,
-                )
+                if scan.config.get("ephemeral"):
+                    # PR / non-default-branch scans must not touch the project's finding state:
+                    # a branch lacking a vulnerability must not mark main's finding "fixed".
+                    from netguard.services.gate import ephemeral_items
+
+                    items = ephemeral_items(db, scan, name, result.findings)
+                    stats = IngestStats()
+                else:
+                    stats = ingest_findings(
+                        db,
+                        project_id=scan.project_id,
+                        scan=scan,
+                        scanner=name,
+                        raws=result.findings,
+                        repository_id=scan.repository_id,
+                        complete=result.complete,
+                        resolve_scope=(lambda f, o=set(only): f.file_path in o) if only else None,
+                    )
                 db.commit()
             outcomes[name] = {
                 "state": ScannerState.COMPLETED.value,
@@ -239,6 +249,8 @@ def execute_scan(scan_id: str) -> None:
                 "warnings": result.warnings,
                 "complete": result.complete,
             }
+            if items is not None:
+                outcomes[name]["items"] = items
             progress.update(
                 name, state=ScannerState.COMPLETED.value, percent=100, findings=len(result.findings)
             )

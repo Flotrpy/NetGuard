@@ -22,7 +22,8 @@ def http(handler):
 
 def test_identifier_and_ref_validation_blocks_path_injection():
     assert validate_external_id("github", "octo/repo-1.x") == "octo/repo-1.x"
-    for bad in ["../etc/passwd", "a/b/c", "owner", "a b/c", "o/r?x=1", "o/r#f", "o/r/../x", ""]:
+    for bad in ["../etc/passwd", "a/b/c", "owner", "a b/c", "o/r?x=1", "o/r#f", "o/r/../x", "",
+                "../x", "o/..", "./r", "o/."]:
         with pytest.raises(ProviderError):
             validate_external_id("github", bad)
     assert validate_external_id("gitlab", "12345") == "12345"

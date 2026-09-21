@@ -21,7 +21,14 @@ Handler = Callable[[Job], None]
 
 
 def _handle_scan(job: Job) -> None:
-    execute_scan(job.payload["scan_id"])
+    from netguard.services import integrations
+
+    scan_id = job.payload["scan_id"]
+    if not integrations.prepare_scan(scan_id):  # provider scan whose code could not be fetched
+        integrations.report_scan(scan_id)
+        return
+    execute_scan(scan_id)
+    integrations.report_scan(scan_id)
     # Verification scans carry a finding/patch; turn the rescan result into a verdict.
     from netguard.services.patches import evaluate_verification
 

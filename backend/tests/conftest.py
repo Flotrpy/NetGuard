@@ -72,6 +72,9 @@ class ApiClient:
     def post(self, url, **kw):
         return self.http.post(url, headers=self._h(kw.pop("headers", None)), **kw)
 
+    def put(self, url, **kw):
+        return self.http.put(url, headers=self._h(kw.pop("headers", None)), **kw)
+
     def patch(self, url, **kw):
         return self.http.patch(url, headers=self._h(kw.pop("headers", None)), **kw)
 

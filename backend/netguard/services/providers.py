@@ -34,7 +34,9 @@ class ProviderError(Exception):
 
 def validate_external_id(provider: str, external_id: str) -> str:
     pattern = _GH_ID if provider == "github" else _GL_ID
-    if not pattern.match(external_id):
+    if not pattern.match(external_id) or any(
+        seg in (".", "..") or set(seg) == {"."} for seg in external_id.split("/")
+    ):
         raise ProviderError(f"Invalid {provider} repository identifier")
     return external_id
 
@@ -45,15 +47,17 @@ def validate_ref(ref: str) -> str:
     return ref
 
 
+def _new_http() -> httpx.Client:  # separate function so tests can inject a mock transport
+    return httpx.Client(timeout=30.0, follow_redirects=True, headers={"User-Agent": "NetGuard"})
+
+
 class _Base:
     provider = ""
 
     def __init__(self, token: str, base_url: str, client: httpx.Client | None = None) -> None:
         self.token = token
         self.base_url = base_url.rstrip("/")
-        self._client = client or httpx.Client(
-            timeout=30.0, follow_redirects=True, headers={"User-Agent": "NetGuard"}
-        )
+        self._client = client or _new_http()
 
     def _headers(self) -> dict[str, str]:  # pragma: no cover - overridden
         raise NotImplementedError

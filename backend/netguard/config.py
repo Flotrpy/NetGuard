@@ -68,6 +68,7 @@ class Settings(BaseSettings):
     github_api_url: str = "https://api.github.com"
     gitlab_api_url: str = "https://gitlab.com/api/v4"
     webhook_secret: str = ""
+    public_url: str = ""  # externally reachable UI URL, used for links in PR comments
 
     @property
     def is_production(self) -> bool:
