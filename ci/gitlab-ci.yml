@@ -1,0 +1,15 @@
+# NetGuard security gate for GitLab CI. Include or merge into .gitlab-ci.yml.
+netguard:
+  stage: test
+  image: python:3.12-slim
+  script:
+    - pip install "git+https://github.com/Flotrpy/NetGuard.git#subdirectory=backend"
+    - netguard-cli scan . --policy .netguard/policy.json --baseline .netguard/baseline.json
+        --format sarif -o netguard.sarif
+  artifacts:
+    when: always
+    paths: [netguard.sarif]
+    expire_in: 30 days
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

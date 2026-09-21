@@ -1,0 +1,10 @@
+{
+  "max_critical": 0,
+  "max_new_high": 0,
+  "max_high": null,
+  "fail_on_secrets": true,
+  "fail_on_severity": null,
+  "min_confidence": "low",
+  "ignore_statuses": ["fixed", "false_positive", "accepted_risk"],
+  "ignore_scanners": []
+}
