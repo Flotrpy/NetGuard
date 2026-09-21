@@ -8,6 +8,7 @@ def load_implemented() -> None:
     from netguard.scanners.dependencies.scanner import DependencyScanner
     from netguard.scanners.docker.scanner import DockerScanner
     from netguard.scanners.iac.scanner import IacScanner
+    from netguard.scanners.network.scanner import NetworkScanner
     from netguard.scanners.registry import register
     from netguard.scanners.sast.engine import SastScanner
     from netguard.scanners.secrets.scanner import SecretScanner
@@ -17,3 +18,4 @@ def load_implemented() -> None:
     register(SecretScanner())
     register(IacScanner())
     register(DockerScanner())
+    register(NetworkScanner())
