@@ -136,6 +136,44 @@ export interface FindingPage {
   total: number;
 }
 
+export interface Explanation {
+  finding_id: string;
+  audience: string;
+  detected: { label: string; value: string }[];
+  source: "rule" | "ai";
+  model: string | null;
+  provider?: string | null;
+  notice: string | null;
+  what_happened: string;
+  why_it_matters: string;
+  inferred: string[];
+  recommended: string[];
+  cached?: boolean;
+}
+
+export interface VerificationResult {
+  state?: "verified_fixed" | "still_detected" | "unable_to_verify";
+  summary?: string;
+  checks?: { name: string; passed: boolean }[];
+  introduced?: { rule_id: string; title: string; severity: string; line: number }[];
+  preflight?: { performed: boolean; rule_still_triggers?: boolean; note: string };
+}
+
+export interface Patch {
+  id: string;
+  finding_id: string;
+  status: "proposed" | "applied" | "rejected";
+  generator: "rule" | "ai";
+  explanation: string;
+  diff: string;
+  file_path: string;
+  caveats: string[];
+  verification: VerificationResult;
+  applied_snapshot_id: string | null;
+  created_at: string;
+  applied_at: string | null;
+}
+
 export interface ModuleStatus {
   scanner: string;
   name: string;
