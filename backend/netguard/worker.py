@@ -22,6 +22,10 @@ Handler = Callable[[Job], None]
 
 def _handle_scan(job: Job) -> None:
     execute_scan(job.payload["scan_id"])
+    # Verification scans carry a finding/patch; turn the rescan result into a verdict.
+    from netguard.services.patches import evaluate_verification
+
+    evaluate_verification(job.payload["scan_id"])
 
 
 HANDLERS: dict[str, Handler] = {"scan": _handle_scan}

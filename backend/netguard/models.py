@@ -312,6 +312,7 @@ class Patch(Base):
     diff: Mapped[str] = mapped_column(Text, default="")
     file_path: Mapped[str] = mapped_column(String(1000), default="")
     base_sha256: Mapped[str] = mapped_column(String(64), default="")  # hash of file patched from
+    base_snapshot_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     new_content: Mapped[str] = mapped_column(Text, default="")
     caveats: Mapped[list] = mapped_column(JSONType, default=list)
     applied_snapshot_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
