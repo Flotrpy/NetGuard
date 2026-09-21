@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "netguard"
+version = "0.1.0"
+description = "NetGuard: security detection, analysis and remediation platform"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
+  "sqlalchemy>=2.0",
+  "alembic>=1.13",
+  "psycopg[binary]>=3.1",
+  "pydantic-settings>=2.2",
+  "pyyaml>=6.0",
+  "httpx>=0.27",
+  "cryptography>=42",
+  "reportlab>=4.0",
+  "jinja2>=3.1",
+  "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+ai = ["anthropic>=0.40"]
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "ruff>=0.4"]
+
+[project.scripts]
+netguard-cli = "netguard.cli:main"
+netguard-worker = "netguard.worker:main"
+
+[tool.setuptools.packages.find]
+include = ["netguard*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+# Deliberately vulnerable fixtures live under tests/fixtures and must never be collected/imported.
+norecursedirs = ["fixtures", ".venv"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["tests/fixtures"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["B008"]
