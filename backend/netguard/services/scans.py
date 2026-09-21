@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import time
 from pathlib import Path
 from typing import Any
@@ -124,8 +125,15 @@ class _Progress:
         return self._cancelled
 
 
+def _fingerprint_salt(settings: Settings) -> str:
+    """Derived (not the master) key: lets sandboxed scanners HMAC secrets for dedup fingerprints."""
+    material = f"netguard-fingerprint-salt:{settings.resolved_secret_key()}".encode()
+    return hashlib.sha256(material).hexdigest()
+
+
 def _runtime(settings: Settings) -> dict[str, Any]:
     return {
+        "fingerprint_salt": _fingerprint_salt(settings),
         "osv_api_url": settings.osv_api_url,
         "osv_offline": settings.osv_offline,
         "osv_timeout": settings.osv_timeout_seconds,

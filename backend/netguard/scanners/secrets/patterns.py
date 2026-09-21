@@ -21,6 +21,9 @@ class SecretRule:
     prefix: str = ""  # non-secret prefix kept in the redacted preview
     generic: bool = False  # generic rules need entropy/placeholder filtering
     cwe: str = "CWE-798"
+    # Mask from the match start to the end of the line (private keys can share a line with
+    # their body, e.g. JSON service-account files).
+    redact_to_eol: bool = False
 
 
 def _r(id_, name, provider, cat, pattern, sev, conf, **kw) -> SecretRule:
@@ -38,7 +41,7 @@ _KEYWORDS = (
 RULES: list[SecretRule] = [
     _r("private-key", "Private key", "", "crypto",
        r"-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP |ENCRYPTED |PRIVATE )?PRIVATE KEY(?: BLOCK)?-----",
-       S.CRITICAL, C.HIGH, prefix="-----BEGIN", cwe="CWE-321"),
+       S.CRITICAL, C.HIGH, prefix="-----BEGIN", cwe="CWE-321", redact_to_eol=True),
     _r("aws-access-key-id", "AWS access key ID", "AWS", "cloud",
        r"\b(?:AKIA|ASIA|AGPA|AIDA|AROA|ANPA|ANVA|AIPA)[A-Z0-9]{16}\b", S.CRITICAL, C.HIGH,
        prefix="AKIA"),
@@ -66,7 +69,7 @@ RULES: list[SecretRule] = [
        r"\bGOCSPX-[A-Za-z0-9_\-]{28}\b", S.HIGH, C.HIGH, prefix="GOCSPX-"),
     _r("gcp-service-account", "GCP service account private key", "Google", "cloud",
        r"\"private_key\"\s*:\s*\"-----BEGIN PRIVATE KEY-----", S.CRITICAL, C.HIGH,
-       cwe="CWE-321"),
+       cwe="CWE-321", redact_to_eol=True),
     _r("azure-storage-key", "Azure storage account key", "Microsoft Azure", "cloud",
        r"AccountKey=([A-Za-z0-9+/]{60,}={0,2})", S.CRITICAL, C.HIGH, group=1),
     _r("sendgrid-key", "SendGrid API key", "SendGrid", "messaging",

@@ -8,6 +8,8 @@ def load_implemented() -> None:
     from netguard.scanners.dependencies.scanner import DependencyScanner
     from netguard.scanners.registry import register
     from netguard.scanners.sast.engine import SastScanner
+    from netguard.scanners.secrets.scanner import SecretScanner
 
     register(SastScanner())
     register(DependencyScanner())
+    register(SecretScanner())

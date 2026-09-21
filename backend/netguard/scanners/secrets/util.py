@@ -18,6 +18,14 @@ _VARIABLE_REFS = re.compile(
 )
 
 
+# Whole-value matches: default/demo credentials that document usage rather than leak a secret.
+_DEMO_VALUES = {
+    "password", "passwd", "pass", "secret", "admin", "root", "postgres", "mysql", "user",
+    "username", "test", "testing", "guest", "default", "dbpassword", "yourpassword",
+    "mypassword", "letmein", "qwerty", "token", "apikey", "api_key", "secretkey",
+}
+
+
 def shannon_entropy(value: str) -> float:
     if not value:
         return 0.0
@@ -35,7 +43,7 @@ def char_classes(value: str) -> int:
 def is_placeholder(value: str) -> bool:
     """True for values that are obviously templates, examples or references to a variable."""
     low = value.lower()
-    if _VARIABLE_REFS.search(value):
+    if low in _DEMO_VALUES or _VARIABLE_REFS.search(value):
         return True
     if any(w in low for w in _PLACEHOLDER_WORDS):
         return True
