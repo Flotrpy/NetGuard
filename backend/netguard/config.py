@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     cookie_name: str = "ng_session"
     csrf_cookie_name: str = "ng_csrf"
     allow_registration: bool = True
+    trust_proxy_headers: bool = False  # honour X-Forwarded-For (only behind a trusted proxy)
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
 
     # Upload / scan resource limits
