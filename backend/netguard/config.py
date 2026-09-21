@@ -78,7 +78,9 @@ class Settings(BaseSettings):
         """Return the configured secret, or (dev/test only) a generated one persisted on disk."""
         if self.secret_key:
             if self.is_production and len(self.secret_key) < 32:
-                raise RuntimeError("NETGUARD_SECRET_KEY must be at least 32 characters in production")
+                raise RuntimeError(
+                    "NETGUARD_SECRET_KEY must be at least 32 characters in production"
+                )
             return self.secret_key
         if self.is_production:
             raise RuntimeError("NETGUARD_SECRET_KEY must be set in production")
