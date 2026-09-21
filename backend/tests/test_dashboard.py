@@ -42,7 +42,8 @@ def test_counts_modules_and_progress(client, fake_scanner):
     assert d["totals"]["remediation_progress"] == round(1 / 3, 3)
     modules = {m["scanner"]: m for m in d["modules"]}
     assert modules["sast"]["status"] == "attention" and modules["sast"]["open_findings"] == 1
-    assert modules["secrets"]["status"] == "unavailable"  # planned scanner: never shown as OK
+    assert modules["secrets"]["status"] == "not_scanned"  # findings exist, no completed scan record
+    assert modules["network"]["status"] == "unavailable"  # planned scanner: never shown as OK
     assert len(d["recently_fixed"]) == 1
 
 
