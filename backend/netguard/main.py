@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from netguard import __version__
-from netguard.api import auth, projects, repositories
+from netguard.api import auth, projects, repositories, scans
 from netguard.config import get_settings
 from netguard.core.middleware import (
     RateLimitMiddleware,
@@ -26,7 +28,20 @@ def create_app() -> FastAPI:
     settings.ensure_dirs()
     init_db(settings)
 
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        worker = None
+        if settings.run_embedded_worker:
+            from netguard.worker import start_embedded_worker
+
+            worker = start_embedded_worker()
+            log.info("embedded worker started")
+        yield
+        if worker:
+            worker[1].set()
+
     app = FastAPI(
+        lifespan=lifespan,
         title="NetGuard API",
         version=__version__,
         docs_url="/api/docs",
@@ -49,6 +64,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(projects.router)
     app.include_router(repositories.router)
+    app.include_router(scans.router)
 
     @app.get("/api/health", tags=["meta"])
     def health() -> dict:

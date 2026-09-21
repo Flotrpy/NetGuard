@@ -16,6 +16,8 @@ def _settings(tmp_path, monkeypatch):
     monkeypatch.setenv("NETGUARD_SECRET_KEY", "test-secret-key-that-is-long-enough-0123456789")
     monkeypatch.setenv("NETGUARD_LOG_LEVEL", "WARNING")
     monkeypatch.setenv("NETGUARD_OSV_OFFLINE", "true")
+    monkeypatch.setenv("NETGUARD_SCAN_ISOLATION", "inline")  # sandbox has its own tests
+    monkeypatch.setenv("NETGUARD_EMBEDDED_WORKER", "false")  # tests drive the worker
     config_module.get_settings.cache_clear()
     from netguard.core import security
 
@@ -88,3 +90,43 @@ def make_client(app):
         return c
 
     return _make
+
+
+@pytest.fixture
+def fake_scanner():
+    """Register a deterministic scanner that flags every line containing 'BAD'."""
+    from netguard.core.files import iter_files, read_text
+    from netguard.enums import Confidence, Severity
+    from netguard.enums import Scanner as Name
+    from netguard.scanners import registry
+    from netguard.scanners.base import RawFinding, Scanner, ScanResult
+
+    class FakeSast(Scanner):
+        name = Name.SAST
+        display_name = "Fake SAST"
+
+        def scan(self, ctx):
+            findings = []
+            files = list(iter_files(ctx.root, only_paths=ctx.only_paths))
+            for i, f in enumerate(files):
+                ctx.progress(100 * i / max(1, len(files)), f.rel_path)
+                for n, line in enumerate((read_text(f.abs_path) or "").splitlines(), 1):
+                    if "BAD" in line:
+                        findings.append(
+                            RawFinding(
+                                rule_id="fake.bad",
+                                title="Bad thing",
+                                severity=Severity.HIGH,
+                                confidence=Confidence.HIGH,
+                                file_path=f.rel_path,
+                                line=n,
+                                code_context=line,
+                            )
+                        )
+            return ScanResult(findings=findings, metadata={"files": len(files)})
+
+    registry.all_scanners()  # ensure registry is loaded
+    original = registry._REGISTRY["sast"]
+    registry._REGISTRY["sast"] = FakeSast()
+    yield
+    registry._REGISTRY["sast"] = original
