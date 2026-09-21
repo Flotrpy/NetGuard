@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from netguard import __version__
-from netguard.api import auth
+from netguard.api import auth, projects
 from netguard.config import get_settings
 from netguard.core.middleware import (
     RateLimitMiddleware,
@@ -47,6 +47,7 @@ def create_app() -> FastAPI:
     app.add_middleware(RequestContextMiddleware)
 
     app.include_router(auth.router)
+    app.include_router(projects.router)
 
     @app.get("/api/health", tags=["meta"])
     def health() -> dict:
