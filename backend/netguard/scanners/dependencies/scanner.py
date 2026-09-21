@@ -54,6 +54,35 @@ def _parser_for(path: Path):
     return _SUFFIXES.get(path.suffix.lower())
 
 
+def inventory(root: Path, on_file=None) -> tuple[list[Package], list[str], int]:
+    """Parse every manifest/lockfile under ``root`` (lockfiles supersede loose manifests).
+
+    Returns (packages, warnings, manifest_count). No network access: this is the shared source
+    for both the vulnerability scan and SBOM generation.
+    """
+    warnings: list[str] = []
+    packages: list[Package] = []
+    files = [
+        f
+        for f in iter_files(root, max_bytes=MAX_MANIFEST_BYTES, only_paths=None)
+        if _parser_for(f.abs_path) is not None
+    ]
+    present = {(Path(f.rel_path).parent.as_posix(), f.abs_path.name.lower()) for f in files}
+    for i, f in enumerate(files):
+        if on_file:
+            on_file(i, len(files), f.rel_path)
+        directory, name = Path(f.rel_path).parent.as_posix(), f.abs_path.name.lower()
+        if any((directory, lock) in present for lock in _SUPERSEDED_BY_LOCK.get(name, ())):
+            continue
+        text = read_text(f.abs_path, MAX_MANIFEST_BYTES)
+        if text is None:
+            continue
+        result: ParseResult = _parser_for(f.abs_path)(text, f.rel_path)  # type: ignore[misc]
+        packages.extend(result.packages)
+        warnings.extend(result.warnings)
+    return packages, warnings, len(files)
+
+
 class DependencyScanner(Scanner):
     name = ScannerName.DEPENDENCIES
     display_name = "Dependency Scanner"
@@ -67,31 +96,12 @@ class DependencyScanner(Scanner):
     def scan(self, ctx: ScanContext) -> ScanResult:
         assert ctx.root is not None
         rt = ctx.runtime
-        warnings: list[str] = []
-        parsed: list[ParseResult] = []
-
-        files = [
-            f
-            for f in iter_files(
-                ctx.root, max_bytes=MAX_MANIFEST_BYTES, only_paths=None
-            )
-            if _parser_for(f.abs_path) is not None
-        ]
-        present = {(Path(f.rel_path).parent.as_posix(), f.abs_path.name.lower()) for f in files}
-        for i, f in enumerate(files):
+        def on_file(i: int, n: int, path: str) -> None:
             ctx.check_cancelled()
-            ctx.progress(20 * i / max(1, len(files)), f.rel_path)
-            directory, name = Path(f.rel_path).parent.as_posix(), f.abs_path.name.lower()
-            if any((directory, lock) in present for lock in _SUPERSEDED_BY_LOCK.get(name, ())):
-                continue
-            text = read_text(f.abs_path, MAX_MANIFEST_BYTES)
-            if text is None:
-                continue
-            result = _parser_for(f.abs_path)(text, f.rel_path)  # type: ignore[misc]
-            parsed.append(result)
-            warnings.extend(result.warnings)
+            ctx.progress(20 * i / max(1, n), path)
 
-        packages = [p for r in parsed for p in r.packages]
+        packages, warnings, manifest_count = inventory(ctx.root, on_file=on_file)
+        files = range(manifest_count)  # only its length is used below
         coords = sorted({p.coordinate for p in packages})
         metadata = {
             "manifests": len(files),
