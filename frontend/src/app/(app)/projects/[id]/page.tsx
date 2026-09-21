@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { ScanProgress } from "@/components/scan-progress";
 import { Card, EmptyState, ErrorBanner, PageHeader, SeverityBadge, Spinner, Tag } from "@/components/ui";
 import { api } from "@/lib/api";
-import { formatBytes, timeAgo, totalCount } from "@/lib/format";
+import { timeAgo, totalCount } from "@/lib/format";
 import { SEVERITIES, type Project, type Repository, type Scan, type ScannerInfo } from "@/lib/types";
 
 export default function ProjectDetailPage() {
@@ -245,12 +245,6 @@ export default function ProjectDetailPage() {
           </div>
         )}
       </Card>
-      {repo?.latest_snapshot_id && (
-        <p className="mt-4 text-xs text-muted">
-          Latest snapshot: {formatBytes(0) && ""}
-          {repos.find((r) => r.id === repoId)?.name}
-        </p>
-      )}
     </>
   );
 }
