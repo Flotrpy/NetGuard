@@ -25,3 +25,5 @@ backend/data/
 Thumbs.db
 .idea/
 .vscode/
+*.tsbuildinfo
+next-env.d.ts
