@@ -9,10 +9,9 @@ from netguard.scanners.sast.rules import Rule
 
 @lru_cache
 def all_rules() -> list[Rule]:
-    from netguard.scanners.sast import rules_js  # noqa: F401  (added below)
+    from netguard.scanners.sast import rules_js, rules_jvm_dotnet, rules_scripting
 
-    rules: list[Rule] = []
-    rules.extend(rules_js.RULES)
+    rules: list[Rule] = [*rules_js.RULES, *rules_jvm_dotnet.RULES, *rules_scripting.RULES]
     ids = [r.id for r in rules]
     assert len(ids) == len(set(ids)), "duplicate SAST rule id"
     return rules

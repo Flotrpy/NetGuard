@@ -199,7 +199,8 @@ class Analyzer(ast.NodeVisitor):
         desc = rule.description
         if tainted:
             desc += (
-                " NetGuard traced request-controlled data into this call (inferred, intra-function)."
+                " NetGuard traced request-controlled data into this call "
+                "(inferred, intra-function)."
             )
         if note:
             desc += f" {note}"
