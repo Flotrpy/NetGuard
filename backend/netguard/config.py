@@ -53,8 +53,17 @@ class Settings(BaseSettings):
     osv_api_url: str = "https://api.osv.dev"
     osv_timeout_seconds: float = 20.0
     osv_offline: bool = False
+    # AI provider: "auto" picks the first configured key (anthropic, groq, gemini).
+    ai_provider: str = "auto"  # auto | anthropic | groq | gemini
     anthropic_model: str = "claude-opus-5"  # override with NETGUARD_ANTHROPIC_MODEL
     anthropic_api_key: str = Field(default="", validation_alias="ANTHROPIC_API_KEY")
+    # Model ids change over time; override with NETGUARD_GROQ_MODEL / NETGUARD_GEMINI_MODEL.
+    groq_model: str = "llama-3.3-70b-versatile"
+    groq_api_key: str = Field(default="", validation_alias="GROQ_API_KEY")
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+    gemini_model: str = "gemini-2.0-flash"
+    gemini_api_key: str = Field(default="", validation_alias="GEMINI_API_KEY")
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
     ai_timeout_seconds: float = 90.0
     github_api_url: str = "https://api.github.com"
     gitlab_api_url: str = "https://gitlab.com/api/v4"

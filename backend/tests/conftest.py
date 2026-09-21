@@ -14,6 +14,8 @@ def _settings(tmp_path, monkeypatch):
     monkeypatch.setenv("NETGUARD_ENV", "test")
     monkeypatch.setenv("NETGUARD_DATA_DIR", str(tmp_path / "data"))
     monkeypatch.setenv("NETGUARD_SECRET_KEY", "test-secret-key-that-is-long-enough-0123456789")
+    for key in ("ANTHROPIC_API_KEY", "GROQ_API_KEY", "GEMINI_API_KEY"):
+        monkeypatch.delenv(key, raising=False)  # tests must never hit a real AI provider
     monkeypatch.setenv("NETGUARD_LOG_LEVEL", "WARNING")
     monkeypatch.setenv("NETGUARD_OSV_OFFLINE", "true")
     monkeypatch.setenv("NETGUARD_SCAN_ISOLATION", "inline")  # sandbox has its own tests

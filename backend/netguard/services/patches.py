@@ -110,7 +110,11 @@ def _ai_fix(finding: Finding, text: str) -> fixers.FixResult | None:
         f"\nFile content{' (excerpt)' if excerpt is not text else ''}:\n<file>\n{excerpt}\n</file>"
     )
     reply = llm.complete(
-        AI_SYSTEM % (MAX_REPLACEMENTS, MAX_CHANGED_LINES), prompt, max_tokens=6000, effort="high"
+        AI_SYSTEM % (MAX_REPLACEMENTS, MAX_CHANGED_LINES),
+        prompt,
+        max_tokens=6000,
+        effort="high",
+        json_mode=True,
     )
     data = llm.extract_json(reply.text)
     reps = data.get("replacements")
