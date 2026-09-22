@@ -1,13 +1,13 @@
 "use client";
 
-import { Download, Radar } from "lucide-react";
+import { Download, Globe2, Radar, Router, Server } from "lucide-react";
 import { useParams } from "next/navigation";
 import { Fragment, useCallback, useEffect, useState, type FormEvent } from "react";
 import { ScanProgress } from "@/components/scan-progress";
-import { Card, EmptyState, ErrorBanner, PageHeader, Tag } from "@/components/ui";
+import { Card, EmptyState, ErrorBanner, PageHeader, SeverityBadge, Tag } from "@/components/ui";
 import { api } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
-import type { Scan } from "@/lib/types";
+import type { Scan, Severity } from "@/lib/types";
 
 interface NetworkOptions {
   scan_types: { id: string; description: string }[];
@@ -25,6 +25,25 @@ interface HostService {
   service: string;
   version: string;
   banner: string;
+}
+
+interface TopologyNode {
+  id: string;
+  type: "scanner" | "internet" | "subnet" | "host";
+  label: string;
+  host_id?: string;
+  ip?: string;
+  device_type?: string;
+  os_guess?: string;
+  ports?: number[];
+  findings?: Record<string, number>;
+  worst?: string | null;
+}
+
+interface Topology {
+  nodes: TopologyNode[];
+  edges: { from: string; to: string }[];
+  note: string;
 }
 
 interface Host {
@@ -45,6 +64,7 @@ export default function NetworkPage() {
   const [options, setOptions] = useState<NetworkOptions | null>(null);
   const [scans, setScans] = useState<Scan[]>([]);
   const [hosts, setHosts] = useState<Host[]>([]);
+  const [topology, setTopology] = useState<Topology | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeScan, setActiveScan] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -58,14 +78,16 @@ export default function NetworkPage() {
 
   const load = useCallback(async () => {
     try {
-      const [opts, sc, inv] = await Promise.all([
+      const [opts, sc, inv, map] = await Promise.all([
         api<NetworkOptions>("/api/network/options"),
         api<Scan[]>(`/api/projects/${id}/network/scans`),
         api<Host[]>(`/api/projects/${id}/network/hosts`),
+        api<Topology>(`/api/projects/${id}/network/map`),
       ]);
       setOptions(opts);
       setScans(sc);
       setHosts(inv);
+      setTopology(map);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load network data");
     }
@@ -96,6 +118,29 @@ export default function NetworkPage() {
     } finally {
       setStarting(false);
     }
+  }
+
+  function renderTopologyNode(node: TopologyNode, depth: number) {
+    const children = (topology?.edges ?? [])
+      .filter((e) => e.from === node.id)
+      .map((e) => topology!.nodes.find((n) => n.id === e.to))
+      .filter((n): n is TopologyNode => !!n);
+    const Icon = node.type === "internet" ? Globe2 : node.type === "scanner" ? Radar : node.type === "subnet" ? Router : Server;
+    return (
+      <li key={node.id} style={{ marginLeft: depth * 20 }} className="py-1">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <Icon className="h-4 w-4 text-muted" aria-hidden />
+          <span className={node.type === "host" ? "" : "font-medium"}>{node.label}</span>
+          {node.type === "host" && node.ip && node.label !== node.ip && <span className="text-xs text-muted">{node.ip}</span>}
+          {node.type === "host" && node.device_type && <Tag>{node.device_type}</Tag>}
+          {node.type === "host" && node.worst && <SeverityBadge severity={node.worst as Severity} />}
+          {node.type === "host" && !!node.ports?.length && (
+            <span className="text-xs text-muted">ports: {node.ports.join(", ")}</span>
+          )}
+        </div>
+        {children.length > 0 && <ul>{children.map((c) => renderTopologyNode(c, depth + 1))}</ul>}
+      </li>
+    );
   }
 
   if (!options) return error ? <ErrorBanner message={error} /> : null;
@@ -256,6 +301,21 @@ export default function NetworkPage() {
               </tbody>
             </table>
           </div>
+        )}
+      </Card>
+
+      <Card title="Topology" className="mt-6">
+        {!topology || topology.nodes.length === 0 ? (
+          <p className="text-sm text-muted">No topology to show yet.</p>
+        ) : (
+          <>
+            <ul>
+              {topology.nodes
+                .filter((n) => !topology.edges.some((e) => e.to === n.id))
+                .map((root) => renderTopologyNode(root, 0))}
+            </ul>
+            <p className="mt-3 text-xs text-muted">{topology.note}</p>
+          </>
         )}
       </Card>
     </>
