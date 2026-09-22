@@ -66,7 +66,7 @@ def test_gemini_request_shape_puts_key_in_header_not_url(monkeypatch):
         seen["url"], seen["key"] = str(request.url), request.headers["x-goog-api-key"]
         seen["body"] = json.loads(request.content)
         return httpx.Response(200, json={
-            "modelVersion": "gemini-2.0-flash",
+            "modelVersion": "gemini-3.6-flash",
             "candidates": [{"finishReason": "STOP",
                             "content": {"parts": [{"text": '{"a":'}, {"text": " 2}"}]}}]})
 
@@ -74,7 +74,7 @@ def test_gemini_request_shape_puts_key_in_header_not_url(monkeypatch):
     mock_http(monkeypatch, handler)
     r = llm.complete("SYS", "USER", json_mode=True)
     assert (r.provider, r.text) == ("gemini", '{"a": 2}')
-    assert seen["url"].endswith("/models/gemini-2.0-flash:generateContent")
+    assert seen["url"].endswith("/models/gemini-3.6-flash:generateContent")
     assert seen["key"] == "AIza-test" and "AIza-test" not in seen["url"]
     body = seen["body"]
     assert body["systemInstruction"]["parts"][0]["text"] == "SYS"

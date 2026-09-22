@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     groq_model: str = "llama-3.3-70b-versatile"
     groq_api_key: str = Field(default="", validation_alias="GROQ_API_KEY")
     groq_base_url: str = "https://api.groq.com/openai/v1"
-    gemini_model: str = "gemini-2.0-flash"
+    gemini_model: str = "gemini-3.6-flash"
     gemini_api_key: str = Field(default="", validation_alias="GEMINI_API_KEY")
     gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
     ai_timeout_seconds: float = 90.0

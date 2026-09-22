@@ -14,8 +14,11 @@ def _settings(tmp_path, monkeypatch):
     monkeypatch.setenv("NETGUARD_ENV", "test")
     monkeypatch.setenv("NETGUARD_DATA_DIR", str(tmp_path / "data"))
     monkeypatch.setenv("NETGUARD_SECRET_KEY", "test-secret-key-that-is-long-enough-0123456789")
+    # Tests must never hit a real AI provider: clear process env AND stop Settings from reading a
+    # developer's local backend/.env, which pydantic-settings loads regardless of os.environ.
+    monkeypatch.setitem(Settings.model_config, "env_file", None)
     for key in ("ANTHROPIC_API_KEY", "GROQ_API_KEY", "GEMINI_API_KEY"):
-        monkeypatch.delenv(key, raising=False)  # tests must never hit a real AI provider
+        monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv("NETGUARD_LOG_LEVEL", "WARNING")
     monkeypatch.setenv("NETGUARD_OSV_OFFLINE", "true")
     monkeypatch.setenv("NETGUARD_SCAN_ISOLATION", "inline")  # sandbox has its own tests
