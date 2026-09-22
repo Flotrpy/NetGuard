@@ -1,23 +1,34 @@
 "use client";
 
-import { KeyRound, Link2, ShieldCheck, Trash2 } from "lucide-react";
-import { useParams } from "next/navigation";
+import { KeyRound, Link2, ShieldCheck, Trash2, Users } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Card, EmptyState, ErrorBanner, PageHeader, Tag } from "@/components/ui";
 import { api } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
-import { SEVERITIES, type ApiToken, type Policy, type Project, type Severity } from "@/lib/types";
+import { SEVERITIES, type ApiToken, type Member, type Policy, type Project, type Severity } from "@/lib/types";
 
 const NONE = "__none__";
 
 export default function ProjectSettingsPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
   const [policy, setPolicy] = useState<Policy | null>(null);
   const [tokens, setTokens] = useState<ApiToken[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [savingPolicy, setSavingPolicy] = useState(false);
   const [policySaved, setPolicySaved] = useState(false);
+
+  const [projectName, setProjectName] = useState("");
+  const [projectDescription, setProjectDescription] = useState("");
+  const [savingProject, setSavingProject] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState("");
+
+  const [memberEmail, setMemberEmail] = useState("");
+  const [memberRole, setMemberRole] = useState<"editor" | "viewer">("viewer");
 
   const [tokenName, setTokenName] = useState("");
   const [tokenScopes, setTokenScopes] = useState<Set<string>>(new Set(["read", "write"]));
@@ -32,14 +43,18 @@ export default function ProjectSettingsPage() {
 
   const load = useCallback(async () => {
     try {
-      const [p, pol, tok] = await Promise.all([
+      const [p, pol, tok, mem] = await Promise.all([
         api<Project>(`/api/projects/${id}`),
         api<Policy>(`/api/projects/${id}/policy`),
         api<ApiToken[]>(`/api/projects/${id}/tokens`).catch(() => []),
+        api<Member[]>(`/api/projects/${id}/members`).catch(() => []),
       ]);
       setProject(p);
       setPolicy(pol);
       setTokens(tok);
+      setMembers(mem);
+      setProjectName((cur) => cur || p.name);
+      setProjectDescription((cur) => cur || p.description);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load settings");
     }
@@ -116,6 +131,61 @@ export default function ProjectSettingsPage() {
     }
   }
 
+  async function saveProject(e: FormEvent) {
+    e.preventDefault();
+    setSavingProject(true);
+    setError(null);
+    try {
+      const updated = await api<Project>(`/api/projects/${id}`, {
+        method: "PATCH",
+        body: { name: projectName, description: projectDescription },
+      });
+      setProject(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save project");
+    } finally {
+      setSavingProject(false);
+    }
+  }
+
+  async function deleteProject() {
+    if (confirmDelete !== project?.name) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await api(`/api/projects/${id}`, { method: "DELETE" });
+      router.push("/projects");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete project");
+      setDeleting(false);
+    }
+  }
+
+  async function addMember(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      await api(`/api/projects/${id}/members`, {
+        method: "POST",
+        body: { email: memberEmail, role: memberRole },
+      });
+      setMemberEmail("");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not add member");
+    }
+  }
+
+  async function removeMember(userId: string) {
+    setError(null);
+    try {
+      await api(`/api/projects/${id}/members/${userId}`, { method: "DELETE" });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not remove member");
+    }
+  }
+
   if (!project || !policy) return error ? <ErrorBanner message={error} /> : null;
 
   if (!isOwner) {
@@ -135,7 +205,55 @@ export default function ProjectSettingsPage() {
       <PageHeader title="Settings" subtitle={project.name} />
       <ErrorBanner message={error} />
 
-      <Card title="Security gate policy" action={<ShieldCheck className="h-4 w-4 text-muted" aria-hidden />}>
+      <Card title="Project details">
+        <form onSubmit={saveProject} className="flex flex-wrap items-end gap-3">
+          <label className="text-sm">
+            <span className="mb-1 block text-xs text-muted">Name</span>
+            <input className="input" required value={projectName} onChange={(e) => setProjectName(e.target.value)} />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-xs text-muted">Description</span>
+            <input className="input" value={projectDescription} onChange={(e) => setProjectDescription(e.target.value)} />
+          </label>
+          <button className="btn btn-primary" disabled={savingProject}>
+            {savingProject ? "Saving…" : "Save"}
+          </button>
+        </form>
+      </Card>
+
+      <Card title="Team members" className="mt-6" action={<Users className="h-4 w-4 text-muted" aria-hidden />}>
+        <ul className="mb-4 divide-y divide-border">
+          {members.map((m) => (
+            <li key={m.user_id} className="flex items-center justify-between py-2 text-sm">
+              <span>
+                <span className="font-medium">{m.name || m.email}</span> <span className="text-muted">{m.email}</span>{" "}
+                <Tag>{m.role}</Tag>
+              </span>
+              {m.role !== "owner" && (
+                <button className="btn" onClick={() => removeMember(m.user_id)}>
+                  <Trash2 className="h-4 w-4" aria-hidden /> Remove
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+        <form onSubmit={addMember} className="flex flex-wrap items-end gap-3">
+          <label className="text-sm">
+            <span className="mb-1 block text-xs text-muted">Email</span>
+            <input className="input" type="email" required value={memberEmail} onChange={(e) => setMemberEmail(e.target.value)} />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-xs text-muted">Role</span>
+            <select className="input" value={memberRole} onChange={(e) => setMemberRole(e.target.value as "editor" | "viewer")}>
+              <option value="viewer">Viewer</option>
+              <option value="editor">Editor</option>
+            </select>
+          </label>
+          <button className="btn btn-primary">Add member</button>
+        </form>
+      </Card>
+
+      <Card title="Security gate policy" className="mt-6" action={<ShieldCheck className="h-4 w-4 text-muted" aria-hidden />}>
         <p className="mb-4 text-sm text-muted">
           Controls when CI/CD builds fail. Every threshold is optional; leave a field blank to not enforce it.
         </p>
@@ -318,6 +436,23 @@ export default function ProjectSettingsPage() {
             {connecting ? "Connecting…" : "Connect"}
           </button>
         </form>
+      </Card>
+
+      <Card title="Danger zone" className="mt-6 border-sev-critical/40">
+        <p className="mb-3 text-sm text-muted">
+          Deleting a project permanently removes its repositories, scans and findings. This cannot be undone.
+        </p>
+        <label className="mb-3 block text-sm">
+          <span className="mb-1 block text-xs text-muted">Type “{project.name}” to confirm</span>
+          <input className="input" value={confirmDelete} onChange={(e) => setConfirmDelete(e.target.value)} />
+        </label>
+        <button
+          className="btn border-sev-critical/40 text-sev-critical"
+          disabled={deleting || confirmDelete !== project.name}
+          onClick={deleteProject}
+        >
+          <Trash2 className="h-4 w-4" aria-hidden /> {deleting ? "Deleting…" : "Delete project"}
+        </button>
       </Card>
     </>
   );
