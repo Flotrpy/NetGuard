@@ -21,7 +21,17 @@ export function ScanProgress({
   scannerNames?: Record<string, string>;
 }) {
   const [scan, setScan] = useState<Scan | null>(null);
+  const [cancelling, setCancelling] = useState(false);
   const finished = useRef(false);
+
+  async function cancel() {
+    setCancelling(true);
+    try {
+      setScan(await api<Scan>(`/api/scans/${scanId}/cancel`, { method: "POST" }));
+    } finally {
+      setCancelling(false);
+    }
+  }
 
   useEffect(() => {
     finished.current = false;
@@ -63,7 +73,14 @@ export function ScanProgress({
 
   return (
     <div aria-live="polite">
-      <p className="mb-3 text-sm font-medium">{heading}</p>
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-sm font-medium">{heading}</p>
+        {ACTIVE.has(scan.status) && (
+          <button className="btn" disabled={cancelling} onClick={cancel}>
+            {cancelling ? "Cancelling…" : "Cancel"}
+          </button>
+        )}
+      </div>
       <ul className="space-y-3">
         {scan.scanners.map((name) => {
           const p = scan.progress[name] ?? { state: "pending", percent: 0 };
