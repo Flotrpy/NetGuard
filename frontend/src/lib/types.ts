@@ -174,6 +174,29 @@ export interface Patch {
   applied_at: string | null;
 }
 
+export interface Policy {
+  max_critical: number | null;
+  max_high: number | null;
+  max_new_high: number | null;
+  max_new_medium: number | null;
+  fail_on_secrets: boolean;
+  fail_on_severity: Severity | null;
+  min_confidence: "low" | "medium" | "high";
+  ignore_statuses: string[];
+  ignore_scanners: string[];
+}
+
+export interface ApiToken {
+  id: string;
+  name: string;
+  prefix: string;
+  scopes: string[];
+  created_at: string;
+  last_used: string | null;
+  expires_at: string | null;
+  revoked: boolean;
+}
+
 export interface ModuleStatus {
   scanner: string;
   name: string;
