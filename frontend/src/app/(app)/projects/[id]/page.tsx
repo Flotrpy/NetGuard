@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, Play, Upload } from "lucide-react";
+import { Box, Download, Play, Upload } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -25,6 +25,10 @@ export default function ProjectDetailPage() {
   const [reportFormat, setReportFormat] = useState("html");
   const [reportMinSeverity, setReportMinSeverity] = useState("info");
   const [reportIncludeFixed, setReportIncludeFixed] = useState(true);
+  const [imageName, setImageName] = useState("");
+  const [imageScanning, setImageScanning] = useState(false);
+  const [activeImageScan, setActiveImageScan] = useState<string | null>(null);
+  const [gates, setGates] = useState<Record<string, { passed: boolean; violations: { rule: string; message: string; count: number }[] }>>({});
 
   const canWrite = project?.role !== "viewer";
 
@@ -90,6 +94,38 @@ export default function ProjectDetailPage() {
       setActiveScan(scan.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start scan");
+    }
+  }
+
+  async function scanImage(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    const file = (form.get("file") as File | null) ?? null;
+    if (!file || !file.name) return;
+    setImageScanning(true);
+    setError(null);
+    try {
+      form.set("image_name", imageName);
+      const scan = await api<Scan>(`/api/projects/${id}/container-scans`, { method: "POST", form });
+      setActiveImageScan(scan.id);
+      setImageName("");
+      e.currentTarget.reset();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Image scan failed");
+    } finally {
+      setImageScanning(false);
+    }
+  }
+
+  async function checkGate(scanId: string) {
+    setError(null);
+    try {
+      const gate = await api<{ passed: boolean; violations: { rule: string; message: string; count: number }[] }>(
+        `/api/scans/${scanId}/gate`,
+      );
+      setGates((cur) => ({ ...cur, [scanId]: gate }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not evaluate gate");
     }
   }
 
@@ -248,6 +284,25 @@ export default function ProjectDetailPage() {
             </div>
           )}
         </Card>
+
+        <Card title="Container image scan">
+          <p className="mb-3 text-sm text-muted">
+            Scan a container image saved with <code>docker save -o image.tar &lt;image&gt;</code>. Nothing in the
+            image is executed.
+          </p>
+          <form onSubmit={scanImage} className="space-y-3">
+            <input className="input" placeholder="Image name (optional)" value={imageName} onChange={(e) => setImageName(e.target.value)} />
+            <input type="file" name="file" required accept=".tar" className="input" disabled={!canWrite} />
+            <button className="btn btn-primary" disabled={!canWrite || imageScanning}>
+              <Box className="h-4 w-4" aria-hidden /> {imageScanning ? "Uploading…" : "Scan image"}
+            </button>
+          </form>
+          {activeImageScan && (
+            <div className="mt-5 border-t border-border pt-4">
+              <ScanProgress scanId={activeImageScan} scannerNames={{ docker: "Docker/container scanner" }} onFinished={load} />
+            </div>
+          )}
+        </Card>
       </div>
 
       <Card title="Reports" className="mt-6">
@@ -302,20 +357,37 @@ export default function ProjectDetailPage() {
                   <th className="th">Status</th>
                   <th className="th">Findings</th>
                   <th className="th">Trigger</th>
+                  <th className="th">Gate</th>
                 </tr>
               </thead>
               <tbody>
-                {scans.map((s) => (
-                  <tr key={s.id} className="border-t border-border">
-                    <td className="td">{timeAgo(s.created_at)}</td>
-                    <td className="td">{s.scanners.map((n) => names[n] ?? n).join(", ")}</td>
-                    <td className="td">{s.status}</td>
-                    <td className="td tabular-nums">{s.summary.severity ? totalCount(s.summary.severity) : "–"}</td>
-                    <td className="td">
-                      <Tag>{s.trigger}</Tag>
-                    </td>
-                  </tr>
-                ))}
+                {scans.map((s) => {
+                  const gate = gates[s.id];
+                  return (
+                    <tr key={s.id} className="border-t border-border">
+                      <td className="td">{timeAgo(s.created_at)}</td>
+                      <td className="td">{s.scanners.map((n) => names[n] ?? n).join(", ")}</td>
+                      <td className="td">{s.status}</td>
+                      <td className="td tabular-nums">{s.summary.severity ? totalCount(s.summary.severity) : "–"}</td>
+                      <td className="td">
+                        <Tag>{s.trigger}</Tag>
+                      </td>
+                      <td className="td">
+                        {gate ? (
+                          <Tag className={gate.passed ? "text-ok" : "text-sev-critical"}>
+                            {gate.passed ? "passed" : `failed (${gate.violations.length})`}
+                          </Tag>
+                        ) : (s.status === "completed" || s.status === "partial") ? (
+                          <button className="text-xs text-muted hover:underline" onClick={() => checkGate(s.id)}>
+                            Check
+                          </button>
+                        ) : (
+                          <span className="text-xs text-muted">–</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
