@@ -186,6 +186,13 @@ export interface Policy {
   ignore_scanners: string[];
 }
 
+export interface Member {
+  user_id: string;
+  email: string;
+  name: string;
+  role: "owner" | "editor" | "viewer";
+}
+
 export interface ApiToken {
   id: string;
   name: string;
