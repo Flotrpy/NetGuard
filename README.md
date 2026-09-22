@@ -60,15 +60,8 @@ The API listens on `http://localhost:8000`. In development it auto-generates a s
 (`backend/data/.dev_secret_key`) and runs an embedded background worker, so no extra setup is needed
 to process scans.
 
-Useful environment variables (prefix `NETGUARD_`, see `netguard/config.py` for the full list):
-
-| Variable | Purpose |
-| --- | --- |
-| `NETGUARD_DATABASE_URL` | defaults to a local SQLite file |
-| `NETGUARD_SECRET_KEY` | required in production (32+ chars); derives the token-encryption key |
-| `NETGUARD_ALLOW_PUBLIC_TARGETS` | must be explicitly enabled to allow scanning public IPs |
-| `ANTHROPIC_API_KEY` / `GROQ_API_KEY` / `GEMINI_API_KEY` | enables AI explain/fix (optional; falls back to rule-based explanations without one) |
-| `NETGUARD_ALLOW_REGISTRATION` | set to `false` to close self-registration once accounts exist |
+Copy `backend/.env.example` to `backend/.env` and fill in real values there — `.env` is git-ignored,
+so secrets never end up in version control. See `netguard/config.py` for the full list of settings.
 
 ### Frontend
 
