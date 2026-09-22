@@ -135,3 +135,27 @@ def fake_scanner():
     registry._REGISTRY["sast"] = FakeSast()
     yield
     registry._REGISTRY["sast"] = original
+
+
+@pytest.fixture
+def planned_api():
+    """Temporarily make the API scanner a 'planned' stub, to test how unavailable scanners behave.
+
+    Every real scanner is implemented now, so the honesty rules for planned scanners (never shown
+    as OK, cannot be started, produce no findings) need a stand-in to stay covered.
+    """
+    from netguard.enums import Scanner as Name
+    from netguard.scanners import registry
+    from netguard.scanners.base import PlannedScanner
+
+    class PlannedApi(PlannedScanner):
+        name = Name.API
+        display_name = "API Scanner"
+        description = "Authorized web API checks."
+        supported_inputs = ("api_target",)
+
+    registry.all_scanners()
+    original = registry._REGISTRY["api"]
+    registry._REGISTRY["api"] = PlannedApi()
+    yield
+    registry._REGISTRY["api"] = original

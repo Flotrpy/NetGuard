@@ -35,7 +35,7 @@ def start(client, project_id, repo_id, scanners=("sast",)):
     )
 
 
-def test_scanner_catalog_marks_unimplemented_modules_unavailable(client):
+def test_scanner_catalog_marks_unimplemented_modules_unavailable(client, planned_api):
     client.register()
     catalog = {s["name"]: s for s in client.get("/api/scanners").json()}
     assert set(catalog) >= {"sast", "network", "api"}
@@ -63,7 +63,7 @@ def test_scan_lifecycle_produces_findings_and_summary(client, fake_scanner):
     assert client.get(f"/api/projects/{p['id']}").json()["open_findings"]["high"] == 2
 
 
-def test_unavailable_or_unknown_scanner_rejected(client, fake_scanner):
+def test_unavailable_or_unknown_scanner_rejected(client, fake_scanner, planned_api):
     p, repo, _ = project_with_code(client, {"a.py": "x"})
     r = start(client, p["id"], repo["id"], ["api"])
     assert r.status_code == 422 and "not available" in r.json()["detail"]

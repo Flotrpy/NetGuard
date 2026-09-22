@@ -8,7 +8,7 @@ from tests.helpers import raw
 from tests.test_findings_api import seed
 
 
-def test_empty_dashboard_is_honest(client):
+def test_empty_dashboard_is_honest(client, planned_api):
     client.register()
     d = client.get("/api/dashboard").json()
     assert d["severity"] == {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
@@ -19,7 +19,7 @@ def test_empty_dashboard_is_honest(client):
     assert d["recent_scans"] == [] and len(d["trend"]) == 30
 
 
-def test_counts_modules_and_progress(client, fake_scanner):
+def test_counts_modules_and_progress(client, fake_scanner, planned_api):
     p = seed(
         client,
         {

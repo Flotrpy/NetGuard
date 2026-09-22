@@ -5,6 +5,7 @@ from __future__ import annotations
 
 def load_implemented() -> None:
     """Import every implemented scanner module so it can register itself."""
+    from netguard.scanners.api.scanner import ApiScanner
     from netguard.scanners.dependencies.scanner import DependencyScanner
     from netguard.scanners.docker.scanner import DockerScanner
     from netguard.scanners.iac.scanner import IacScanner
@@ -21,3 +22,4 @@ def load_implemented() -> None:
     register(DockerScanner())
     register(NetworkScanner())
     register(PacketScanner())
+    register(ApiScanner())
