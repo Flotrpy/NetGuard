@@ -138,7 +138,19 @@ export default function ProjectDetailPage() {
                     <input type="radio" name="repo" checked={repoId === r.id} onChange={() => setRepoId(r.id)} />
                     {r.name}
                   </label>
-                  <Tag>{r.latest_snapshot_id ? "snapshot ready" : "no code yet"}</Tag>
+                  <span className="flex items-center gap-2">
+                    {r.latest_snapshot_id && (
+                      <>
+                        <a className="text-xs text-muted hover:underline" href={`/api/repositories/${r.id}/sbom?format=cyclonedx`}>
+                          SBOM (CycloneDX)
+                        </a>
+                        <a className="text-xs text-muted hover:underline" href={`/api/repositories/${r.id}/sbom?format=spdx`}>
+                          SBOM (SPDX)
+                        </a>
+                      </>
+                    )}
+                    <Tag>{r.latest_snapshot_id ? "snapshot ready" : "no code yet"}</Tag>
+                  </span>
                 </li>
               ))}
             </ul>
