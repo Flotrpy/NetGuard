@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from netguard import __version__
 from netguard.api import (
     ai,
+    api_scans,
     auth,
     dashboard,
     findings,
@@ -84,6 +85,7 @@ def create_app() -> FastAPI:
     app.include_router(sbom.router)
     app.include_router(network.router)
     app.include_router(packets.router)
+    app.include_router(api_scans.router)
 
     @app.get("/api/health", tags=["meta"])
     def health() -> dict:

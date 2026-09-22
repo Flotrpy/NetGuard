@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from netguard.config import Settings, get_settings
 from netguard.core.sandbox import Limits, SandboxCancelled, SandboxError, run_in_sandbox
+from netguard.core.security import decrypt_secret
 from netguard.db import get_session_factory, utcnow
 from netguard.enums import ACTIVE_STATUSES, ScannerState, ScanStatus
 from netguard.logging import get_logger
@@ -147,6 +148,15 @@ def _runtime(settings: Settings) -> dict[str, Any]:
     }
 
 
+def _runtime_config(config: dict[str, Any]) -> dict[str, Any]:
+    """Scan config as the scanner sees it: stored credentials are decrypted *in memory only*."""
+    cfg = dict(config)
+    encrypted = cfg.pop("auth_encrypted", "")
+    if encrypted:
+        cfg["auth_value"] = decrypt_secret(encrypted)
+    return cfg
+
+
 def _run_scanner(
     settings: Settings,
     scanner_name: str,
@@ -155,10 +165,11 @@ def _run_scanner(
     progress: _Progress,
 ) -> ScanResult:
     only = sorted(scan.config.get("only_paths")) if scan.config.get("only_paths") else None
+    config = _runtime_config(scan.config)
     args = (
         scanner_name,
         str(root) if root else None,
-        scan.config,
+        config,
         settings.max_file_scan_kb * 1024,
         only,
         _runtime(settings),
@@ -167,7 +178,7 @@ def _run_scanner(
     if settings.scan_isolation == "inline":
         ctx = ScanContext(
             root=root,
-            config=scan.config,
+            config=config,
             max_file_bytes=args[3],
             progress=report,
             is_cancelled=progress.is_cancelled,
@@ -194,6 +205,9 @@ def _resolve_scope(scan: Scan, result: ScanResult, only: Any):
     if scan.kind == "network":  # only hosts that actually answered can be judged
         ips = set(result.metadata.get("responsive_ips", []))
         return lambda f: (f.extra or {}).get("ip") in ips
+    if scan.kind == "api":  # an API scan only speaks for the API it tested
+        base = result.metadata.get("base_url")
+        return lambda f: (f.extra or {}).get("base_url") == base
     if scan.kind == "container":  # an image scan only speaks for that image
         image = result.metadata.get("image")
         return lambda f: (f.extra or {}).get("image") == image
