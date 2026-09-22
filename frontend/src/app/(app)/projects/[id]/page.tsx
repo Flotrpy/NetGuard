@@ -110,9 +110,16 @@ export default function ProjectDetailPage() {
         title={project.name}
         subtitle={project.description || "Project overview"}
         actions={
-          <Link className="btn" href={`/findings?project_id=${project.id}`}>
-            View findings
-          </Link>
+          <>
+            {project.role === "owner" && (
+              <Link className="btn" href={`/projects/${project.id}/settings`}>
+                Settings
+              </Link>
+            )}
+            <Link className="btn" href={`/findings?project_id=${project.id}`}>
+              View findings
+            </Link>
+          </>
         }
       />
       <ErrorBanner message={error} />
