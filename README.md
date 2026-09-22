@@ -44,6 +44,14 @@ AI-powered security detection, analysis and remediation platform.
   (`next.config.mjs`), so session cookies stay first-party and the API itself never needs permissive
   CORS.
 
+## Access control
+
+There's no separate "username" — accounts are identified by email. The **first account ever
+registered automatically becomes admin**, regardless of the registration setting below. For a
+single-operator deployment, register that one account, then set `NETGUARD_ALLOW_REGISTRATION=false`
+in `.env` so no one else can create a second one — the register endpoint returns `403 Registration is
+disabled` for every attempt after the first.
+
 ## Running it locally
 
 ### Backend
