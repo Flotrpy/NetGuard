@@ -110,3 +110,12 @@ netguard-cli scan ./path/to/repo --policy policy.json --strict
 
 See `ci/github-actions.yml` and `ci/gitlab-ci.yml` for ready-to-use pipeline templates, and
 `ci/example-policy/policy.json` for a sample gate policy.
+
+## Deployment
+
+The `frontend/` app is deployed on Vercel (project `netguard`, auto-deploying from `main`). Vercel
+only hosts the Next.js frontend — the FastAPI backend needs a host that supports a persistent
+process, background worker and local disk (a VM, Render, Fly.io, Railway, etc.), since none of that
+fits Vercel's serverless model. Once the backend has a public URL, set `NETGUARD_API_URL` to it in
+the Vercel project's environment variables (it currently points at `http://localhost:8000`, which is
+unreachable from Vercel and means the deployed frontend can't reach the API yet).
