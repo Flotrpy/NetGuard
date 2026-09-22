@@ -119,6 +119,9 @@ export default function ProjectDetailPage() {
             <Link className="btn" href={`/projects/${project.id}/network`}>
               Network
             </Link>
+            <Link className="btn" href={`/projects/${project.id}/packets`}>
+              Packets
+            </Link>
             <Link className="btn" href={`/findings?project_id=${project.id}`}>
               View findings
             </Link>
