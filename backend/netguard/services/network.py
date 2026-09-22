@@ -64,7 +64,7 @@ def host_dict(host: NetworkHost, findings: list[Finding] | None = None) -> dict[
 
 def _active_findings_by_ip(db: Session, project_id: str) -> dict[str, list[Finding]]:
     rows = db.scalars(select(Finding).where(
-        Finding.project_id == project_id, Finding.scanner == "network",
+        Finding.project_id == project_id, Finding.scanner.in_(["network", "packets"]),
         Finding.status.in_([s.value for s in ACTIVE_STATUSES])))
     out: dict[str, list[Finding]] = {}
     for f in rows:

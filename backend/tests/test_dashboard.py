@@ -14,7 +14,7 @@ def test_empty_dashboard_is_honest(client):
     assert d["severity"] == {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
     assert d["totals"]["remediation_progress"] is None  # no fake "100% secure"
     statuses = {m["scanner"]: m["status"] for m in d["modules"]}
-    assert statuses["packets"] == "unavailable"
+    assert statuses["api"] == "unavailable"
     assert all(s in ("unavailable", "not_scanned") for s in statuses.values())
     assert d["recent_scans"] == [] and len(d["trend"]) == 30
 
@@ -43,7 +43,7 @@ def test_counts_modules_and_progress(client, fake_scanner):
     modules = {m["scanner"]: m for m in d["modules"]}
     assert modules["sast"]["status"] == "attention" and modules["sast"]["open_findings"] == 1
     assert modules["secrets"]["status"] == "not_scanned"  # findings exist, no completed scan record
-    assert modules["packets"]["status"] == "unavailable"  # planned scanner: never shown as OK
+    assert modules["api"]["status"] == "unavailable"  # planned scanner: never shown as OK
     assert len(d["recently_fixed"]) == 1
 
 

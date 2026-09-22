@@ -15,6 +15,7 @@ from netguard.api import (
     findings,
     integrations,
     network,
+    packets,
     projects,
     repositories,
     sbom,
@@ -82,6 +83,7 @@ def create_app() -> FastAPI:
     app.include_router(integrations.router)
     app.include_router(sbom.router)
     app.include_router(network.router)
+    app.include_router(packets.router)
 
     @app.get("/api/health", tags=["meta"])
     def health() -> dict:

@@ -136,6 +136,7 @@ def _runtime(settings: Settings) -> dict[str, Any]:
     return {
         "fingerprint_salt": _fingerprint_salt(settings),
         "uploads_dir": str(settings.uploads_dir),
+        "max_pcap_packets": settings.max_pcap_packets,
         "osv_api_url": settings.osv_api_url,
         "osv_offline": settings.osv_offline,
         "osv_timeout": settings.osv_timeout_seconds,
@@ -254,6 +255,10 @@ def execute_scan(scan_id: str) -> None:
                         complete=result.complete,
                         resolve_scope=_resolve_scope(scan, result, only),
                     )
+                if name == "packets":
+                    from netguard.services.packets import persist_capture
+
+                    persist_capture(db, scan, result.metadata)
                 if name == "network" and result.metadata.get("hosts") is not None:
                     from netguard.services.network import persist_hosts
 
@@ -264,7 +269,9 @@ def execute_scan(scan_id: str) -> None:
                 "findings": len(result.findings),
                 "ingest": stats.as_dict(),
                 # host/service detail lives in its own tables; keep the scan summary small
-                "metadata": {k: v for k, v in result.metadata.items() if k != "hosts"},
+                "metadata": {
+                    k: v for k, v in result.metadata.items() if k not in ("hosts", "summary")
+                },
                 "warnings": result.warnings,
                 "complete": result.complete,
             }
