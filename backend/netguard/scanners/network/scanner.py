@@ -120,7 +120,11 @@ class NetworkScanner(Scanner):
         finished = datetime.now(UTC)
         return ScanResult(
             findings=findings,
+            # Only a full audit can vouch for the absence of findings; discovery/port scans must
+            # never cause earlier audit findings to be auto-resolved.
+            complete=scan_type == "security_audit",
             metadata={
+                "responsive_ips": [h["ip"] for h in hosts],
                 "scan_type": scan_type, "hosts": hosts, "targets_scanned": len(targets),
                 "hosts_up": len(hosts), "scanned_ips": targets, "ports_per_host": len(ports)
                 if scan_type != "quick_discovery" else 0,

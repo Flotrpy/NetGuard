@@ -190,6 +190,9 @@ def _run_scanner(
 
 def _resolve_scope(scan: Scan, result: ScanResult, only: Any):
     """Which existing findings a complete scan may auto-resolve."""
+    if scan.kind == "network":  # only hosts that actually answered can be judged
+        ips = set(result.metadata.get("responsive_ips", []))
+        return lambda f: (f.extra or {}).get("ip") in ips
     if scan.kind == "container":  # an image scan only speaks for that image
         image = result.metadata.get("image")
         return lambda f: (f.extra or {}).get("image") == image
@@ -251,12 +254,17 @@ def execute_scan(scan_id: str) -> None:
                         complete=result.complete,
                         resolve_scope=_resolve_scope(scan, result, only),
                     )
+                if name == "network" and result.metadata.get("hosts") is not None:
+                    from netguard.services.network import persist_hosts
+
+                    persist_hosts(db, scan, result.metadata["hosts"])
                 db.commit()
             outcomes[name] = {
                 "state": ScannerState.COMPLETED.value,
                 "findings": len(result.findings),
                 "ingest": stats.as_dict(),
-                "metadata": result.metadata,
+                # host/service detail lives in its own tables; keep the scan summary small
+                "metadata": {k: v for k, v in result.metadata.items() if k != "hosts"},
                 "warnings": result.warnings,
                 "complete": result.complete,
             }
