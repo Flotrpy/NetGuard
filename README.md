@@ -52,6 +52,16 @@ single-operator deployment, register that one account, then set `NETGUARD_ALLOW_
 in `.env` so no one else can create a second one — the register endpoint returns `403 Registration is
 disabled` for every attempt after the first.
 
+Bootstrap that first account directly against the API (the frontend's register page works too):
+
+```bash
+curl -X POST http://localhost:8000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com","password":"a-strong-passphrase","name":"Your Name"}'
+```
+
+Passwords must be at least 10 characters and must not contain the part of your email before the `@`.
+
 ## Running it locally
 
 ### Backend
