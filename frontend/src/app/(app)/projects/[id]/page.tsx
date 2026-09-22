@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, Download, Play, Upload } from "lucide-react";
+import { Box, Download, FileText, Play, Upload } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -29,6 +29,10 @@ export default function ProjectDetailPage() {
   const [imageScanning, setImageScanning] = useState(false);
   const [activeImageScan, setActiveImageScan] = useState<string | null>(null);
   const [gates, setGates] = useState<Record<string, { passed: boolean; violations: { rule: string; message: string; count: number }[] }>>({});
+  const [browsing, setBrowsing] = useState(false);
+  const [files, setFiles] = useState<{ path: string; size: number; language: string }[]>([]);
+  const [fileFilter, setFileFilter] = useState("");
+  const [selectedFile, setSelectedFile] = useState<{ path: string; language: string; content: string } | null>(null);
 
   const canWrite = project?.role !== "viewer";
 
@@ -129,6 +133,33 @@ export default function ProjectDetailPage() {
     }
   }
 
+  async function browseFiles() {
+    if (!repo?.latest_snapshot_id) return;
+    setBrowsing(true);
+    setSelectedFile(null);
+    setError(null);
+    try {
+      setFiles(await api<{ path: string; size: number; language: string }[]>(
+        `/api/snapshots/${repo.latest_snapshot_id}/files`,
+      ));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not list files");
+    }
+  }
+
+  async function openFile(path: string) {
+    if (!repo?.latest_snapshot_id) return;
+    setError(null);
+    try {
+      setSelectedFile(await api<{ path: string; language: string; content: string }>(
+        `/api/snapshots/${repo.latest_snapshot_id}/file`,
+        { query: { path } },
+      ));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not open file");
+    }
+  }
+
   if (!project) return error ? <ErrorBanner message={error} /> : <Spinner />;
 
   const repo = repos.find((r) => r.id === repoId);
@@ -187,7 +218,16 @@ export default function ProjectDetailPage() {
               {repos.map((r) => (
                 <li key={r.id} className="flex items-center justify-between py-2 text-sm">
                   <label className="flex items-center gap-2">
-                    <input type="radio" name="repo" checked={repoId === r.id} onChange={() => setRepoId(r.id)} />
+                    <input
+                      type="radio"
+                      name="repo"
+                      checked={repoId === r.id}
+                      onChange={() => {
+                        setRepoId(r.id);
+                        setBrowsing(false);
+                        setSelectedFile(null);
+                      }}
+                    />
                     {r.name}
                   </label>
                   <span className="flex items-center gap-2">
@@ -235,6 +275,11 @@ export default function ProjectDetailPage() {
                 authorized to analyze.
               </p>
             </div>
+          )}
+          {repo?.latest_snapshot_id && (
+            <button className="btn mt-3" onClick={browseFiles}>
+              <FileText className="h-4 w-4" aria-hidden /> Browse files in “{repo.name}”
+            </button>
           )}
         </Card>
 
@@ -304,6 +349,55 @@ export default function ProjectDetailPage() {
           )}
         </Card>
       </div>
+
+      {browsing && (
+        <Card
+          title={`Browse code — ${repo?.name ?? ""}`}
+          className="mt-6"
+          action={
+            <button className="btn" onClick={() => { setBrowsing(false); setSelectedFile(null); }}>
+              Close
+            </button>
+          }
+        >
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="md:col-span-1">
+              <input
+                className="input mb-2 w-full"
+                placeholder="Filter by path…"
+                value={fileFilter}
+                onChange={(e) => setFileFilter(e.target.value)}
+              />
+              <ul className="max-h-96 divide-y divide-border overflow-y-auto text-sm">
+                {files
+                  .filter((f) => f.path.toLowerCase().includes(fileFilter.toLowerCase()))
+                  .map((f) => (
+                    <li
+                      key={f.path}
+                      className={`cursor-pointer truncate py-1.5 hover:underline ${selectedFile?.path === f.path ? "font-medium" : ""}`}
+                      onClick={() => openFile(f.path)}
+                    >
+                      {f.path}
+                    </li>
+                  ))}
+                {files.length === 0 && <p className="py-2 text-xs text-muted">No text files found.</p>}
+              </ul>
+            </div>
+            <div className="md:col-span-2">
+              {selectedFile ? (
+                <>
+                  <p className="mb-2 text-xs text-muted">
+                    {selectedFile.path} · {selectedFile.language || "plain text"}
+                  </p>
+                  <pre className="max-h-96 overflow-auto rounded bg-surface-2 p-3 text-xs">{selectedFile.content}</pre>
+                </>
+              ) : (
+                <p className="text-sm text-muted">Select a file to view its contents.</p>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
 
       <Card title="Reports" className="mt-6">
         <p className="mb-3 text-sm text-muted">
