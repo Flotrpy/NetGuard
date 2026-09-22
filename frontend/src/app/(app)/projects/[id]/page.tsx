@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, Download, FileText, Play, Upload } from "lucide-react";
+import { Box, Download, FileText, Play, Trash2, Upload } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -133,6 +133,22 @@ export default function ProjectDetailPage() {
     }
   }
 
+  async function deleteRepo(repoIdToDelete: string) {
+    if (!confirm("Delete this repository and all of its snapshots? This cannot be undone.")) return;
+    setError(null);
+    try {
+      await api(`/api/repositories/${repoIdToDelete}`, { method: "DELETE" });
+      if (repoId === repoIdToDelete) {
+        setRepoId("");
+        setBrowsing(false);
+        setSelectedFile(null);
+      }
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete repository");
+    }
+  }
+
   async function browseFiles() {
     if (!repo?.latest_snapshot_id) return;
     setBrowsing(true);
@@ -242,6 +258,15 @@ export default function ProjectDetailPage() {
                       </>
                     )}
                     <Tag>{r.latest_snapshot_id ? "snapshot ready" : "no code yet"}</Tag>
+                    {project.role === "owner" && (
+                      <button
+                        className="text-muted hover:text-sev-critical"
+                        title={`Delete ${r.name}`}
+                        onClick={() => deleteRepo(r.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                      </button>
+                    )}
                   </span>
                 </li>
               ))}
