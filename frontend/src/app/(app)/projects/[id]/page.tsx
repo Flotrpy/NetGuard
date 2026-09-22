@@ -1,6 +1,6 @@
 "use client";
 
-import { Play, Upload } from "lucide-react";
+import { Download, Play, Upload } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -22,6 +22,9 @@ export default function ProjectDetailPage() {
   const [repoId, setRepoId] = useState("");
   const [newRepo, setNewRepo] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [reportFormat, setReportFormat] = useState("html");
+  const [reportMinSeverity, setReportMinSeverity] = useState("info");
+  const [reportIncludeFixed, setReportIncludeFixed] = useState(true);
 
   const canWrite = project?.role !== "viewer";
 
@@ -94,6 +97,12 @@ export default function ProjectDetailPage() {
 
   const repo = repos.find((r) => r.id === repoId);
   const names = Object.fromEntries(scanners.map((s) => [s.name, s.display_name]));
+  const reportQuery = new URLSearchParams({
+    format: reportFormat,
+    min_severity: reportMinSeverity,
+    include_fixed: String(reportIncludeFixed),
+  });
+  const reportHref = `/api/projects/${project.id}/report?${reportQuery.toString()}`;
 
   return (
     <>
@@ -212,6 +221,45 @@ export default function ProjectDetailPage() {
           )}
         </Card>
       </div>
+
+      <Card title="Reports" className="mt-6">
+        <p className="mb-3 text-sm text-muted">
+          Export a security assessment report covering findings, verification results, dependency and
+          network detail. Secret values are never included.
+        </p>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="text-sm">
+            <span className="mb-1 block text-xs text-muted">Format</span>
+            <select className="input" value={reportFormat} onChange={(e) => setReportFormat(e.target.value)}>
+              <option value="html">HTML</option>
+              <option value="pdf">PDF</option>
+              <option value="json">JSON</option>
+              <option value="csv">CSV</option>
+            </select>
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-xs text-muted">Minimum severity</span>
+            <select className="input" value={reportMinSeverity} onChange={(e) => setReportMinSeverity(e.target.value)}>
+              {SEVERITIES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-2 pb-2 text-sm">
+            <input
+              type="checkbox"
+              checked={reportIncludeFixed}
+              onChange={(e) => setReportIncludeFixed(e.target.checked)}
+            />
+            Include fixed findings
+          </label>
+          <a className="btn btn-primary" href={reportHref}>
+            <Download className="h-4 w-4" aria-hidden /> Download report
+          </a>
+        </div>
+      </Card>
 
       <Card title="Scan history" className="mt-6">
         {scans.length === 0 ? (
